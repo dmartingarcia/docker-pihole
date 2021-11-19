@@ -1,0 +1,40 @@
+version: "3.6"
+
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:${PIHOLE_VERSION}
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "67:67/udp"
+      - "8081:9009/tcp"
+    environment:
+      TZ: 'Europe/Madrid'
+      WEBPASSWORD: "${ADMIN_PASSWORD}"
+    volumes:
+      - './etc-pihole/:/etc/pihole/'
+      - './etc-dnsmasq.d/:/etc/dnsmasq.d/'
+    # Recommended but not required (DHCP needs NET_ADMIN)
+    #   https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyfin.rule=Host(`pihole.${HTTP_HOST}`)"
+      - "traefik.http.routers.jellyfin.tls=true"
+      - "traefik.http.routers.jellyfin.entrypoints=websecure"
+      - "traefik.http.routers.jellyfin.tls.certresolver=lets-encrypt"
+      - "traefik.http.routers.jellyfin.middlewares=simpleauth@file"
+      - "traefik.port=8081"
+    networks:
+      - internal
+      - web
+
+networks:
+  web:
+    external: true
+  internal:
+    external: false
+    driver: bridge
